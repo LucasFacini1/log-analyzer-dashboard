@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log Analyzer Dashboard</title>
+    
+    <!-- TailwindCSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Font Awesome para ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Configuração personalizada do Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'dark-bg': '#0f172a',
+                        'dark-card': '#1e293b',
+                        'dark-border': '#334155',
+                        'accent-blue': '#3b82f6',
+                        'accent-red': '#ef4444',
+                        'accent-yellow': '#f59e0b',
+                        'accent-green': '#10b981'
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        .glow-effect {
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+        }
+        
+        .card-glow {
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+        }
+        
+        .upload-area {
+            border: 2px dashed #3b82f6;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-area:hover {
+            border-color: #60a5fa;
+            background-color: rgba(59, 130, 246, 0.05);
+        }
+        
+        .upload-area.dragover {
+            border-color: #10b981;
+            background-color: rgba(16, 185, 129, 0.1);
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body class="bg-dark-bg text-white min-h-screen">
+    <!-- Navbar -->
+    <nav class="bg-dark-card border-b border-dark-border sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <i class="fas fa-chart-line text-accent-blue text-2xl mr-3"></i>
+                    <h1 class="text-xl font-bold text-white">Log Analyzer Dashboard</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm text-gray-400">Sistema de Análise de Logs</span>
+                    <div class="w-2 h-2 bg-accent-green rounded-full pulse-animation"></div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Upload Section -->
+        <div class="mb-8">
+            <div class="bg-dark-card rounded-lg border border-dark-border p-6 card-glow">
+                <h2 class="text-2xl font-bold mb-4 flex items-center">
+                    <i class="fas fa-upload text-accent-blue mr-3"></i>
+                    Upload de Arquivo de Log
+                </h2>
+                
+                <div id="upload-area" class="upload-area rounded-lg p-8 text-center cursor-pointer">
+                    <div id="upload-content">
+                        <i class="fas fa-cloud-upload-alt text-4xl text-accent-blue mb-4"></i>
+                        <p class="text-lg mb-2">Arraste e solte seu arquivo de log aqui</p>
+                        <p class="text-gray-400 mb-4">ou clique para selecionar</p>
+                        <input type="file" id="file-input" accept=".log,.txt" class="hidden">
+                        <button id="select-file-btn" class="bg-accent-blue hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition-colors">
+                            Selecionar Arquivo
+                        </button>
+                    </div>
+                    
+                    <div id="upload-progress" class="hidden">
+                        <i class="fas fa-spinner fa-spin text-4xl text-accent-blue mb-4"></i>
+                        <p class="text-lg">Analisando arquivo...</p>
+                        <div class="w-full bg-gray-700 rounded-full h-2 mt-4">
+                            <div class="bg-accent-blue h-2 rounded-full animate-pulse" style="width: 100%"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="file-info" class="hidden mt-4 p-4 bg-gray-800 rounded-lg">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <i class="fas fa-file-alt text-accent-blue mr-2"></i>
+                            <span id="file-name" class="font-medium"></span>
+                        </div>
+                        <span id="file-size" class="text-sm text-gray-400"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="results-section" class="hidden fade-in">
+            <!-- Statistics Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-dark-card rounded-lg border border-dark-border p-6 card-glow">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-400 text-sm">Total de Linhas</p>
+                            <p id="total-lines" class="text-2xl font-bold text-white">0</p>
+                        </div>
+                        <i class="fas fa-list text-3xl text-accent-blue"></i>
+                    </div>
+                </div>
+                
+                <div class="bg-dark-card rounded-lg border border-dark-border p-6 card-glow">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-400 text-sm">Erros</p>
+                            <p id="error-count" class="text-2xl font-bold text-accent-red">0</p>
+                        </div>
+                        <i class="fas fa-exclamation-triangle text-3xl text-accent-red"></i>
+                    </div>
+                </div>
+                
+                <div class="bg-dark-card rounded-lg border border-dark-border p-6 card-glow">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-400 text-sm">Avisos</p>
+                            <p id="warning-count" class="text-2xl font-bold text-accent-yellow">0</p>
+                        </div>
+                        <i class="fas fa-exclamation-circle text-3xl text-accent-yellow"></i>
+                    </div>
+                </div>
+                
+                <div class="bg-dark-card rounded-lg border border-dark-border p-6 card-glow">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-400 text-sm">Informações</p>
+                            <p id="info-count" class="text-2xl font-bold text-accent-green">0</p>
+                        </div>
+                        <i class="fas fa-info-circle text-3xl text-accent-green"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <!-- Pie Chart -->
+                <div class="bg-dark-card rounded-lg border border-dark-border p-6 card-glow">
+                    <h3 class="text-xl font-bold mb-4 flex items-center">
+                        <i class="fas fa-chart-pie text-accent-blue mr-3"></i>
+                        Distribuição por Nível
+                    </h3>
+                    <div class="relative h-80">
+                        <canvas id="pie-chart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Line Chart -->
+                <div class="bg-dark-card rounded-lg border border-dark-border p-6 card-glow">
+                    <h3 class="text-xl font-bold mb-4 flex items-center">
+                        <i class="fas fa-chart-line text-accent-blue mr-3"></i>
+                        Evolução Temporal
+                    </h3>
+                    <div class="relative h-80">
+                        <canvas id="line-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Additional Charts Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <!-- Category Chart -->
+                <div class="bg-dark-card rounded-lg border border-dark-border p-6 card-glow">
+                    <h3 class="text-xl font-bold mb-4 flex items-center">
+                        <i class="fas fa-chart-pie text-accent-blue mr-3"></i>
+                        Distribuição por Categoria
+                    </h3>
+                    <div class="relative h-80">
+                        <canvas id="category-chart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Severity Chart -->
+                <div class="bg-dark-card rounded-lg border border-dark-border p-6 card-glow">
+                    <h3 class="text-xl font-bold mb-4 flex items-center">
+                        <i class="fas fa-chart-pie text-accent-red mr-3"></i>
+                        Distribuição por Severidade
+                    </h3>
+                    <div class="relative h-80">
+                        <canvas id="severity-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Complete Logs Table -->
+            <div class="bg-dark-card rounded-lg border border-dark-border p-6 card-glow mb-8">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xl font-bold flex items-center">
+                        <i class="fas fa-table text-accent-blue mr-3"></i>
+                        Todos os Logs Processados
+                    </h3>
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center space-x-2">
+                            <label class="text-sm text-gray-300">Logs por página:</label>
+                            <select id="logs-per-page" class="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm">
+                                <option value="10">10</option>
+                                <option value="25" selected>25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+                        <div class="text-sm text-gray-400">
+                            <span id="logs-info">Carregando...</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-dark-border">
+                                <th class="text-left py-3 px-4 font-medium text-gray-300">Data/Hora</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-300">Nível</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-300">Severidade</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-300">Categoria</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-300">Mensagem</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logs-table-body">
+                            <!-- Logs will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination Controls -->
+                <div class="flex items-center justify-between mt-4 pt-4 border-t border-dark-border">
+                    <div class="flex items-center space-x-2">
+                        <button id="first-page" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                            <i class="fas fa-angle-double-left"></i>
+                        </button>
+                        <button id="prev-page" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                            <i class="fas fa-angle-left"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="flex items-center space-x-2">
+                        <span class="text-sm text-gray-300">Página</span>
+                        <input type="number" id="current-page-input" min="1" class="w-16 px-2 py-1 bg-gray-800 border border-gray-600 rounded text-white text-sm text-center">
+                        <span class="text-sm text-gray-300">de</span>
+                        <span id="total-pages" class="text-sm text-gray-300">1</span>
+                    </div>
+                    
+                    <div class="flex items-center space-x-2">
+                        <button id="next-page" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                            <i class="fas fa-angle-right"></i>
+                        </button>
+                        <button id="last-page" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                            <i class="fas fa-angle-double-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Problems Analysis Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <!-- Problems Detected -->
+                <div class="bg-dark-card rounded-lg border border-dark-border p-6 card-glow">
+                    <h3 class="text-xl font-bold mb-4 flex items-center">
+                        <i class="fas fa-exclamation-triangle text-accent-red mr-3"></i>
+                        Problemas Detectados
+                    </h3>
+                    <div id="problems-list" class="space-y-3 max-h-80 overflow-y-auto">
+                        <!-- Problems will be populated here -->
+                    </div>
+                </div>
+                
+                <!-- Suggestions -->
+                <div class="bg-dark-card rounded-lg border border-dark-border p-6 card-glow">
+                    <h3 class="text-xl font-bold mb-4 flex items-center">
+                        <i class="fas fa-lightbulb text-accent-yellow mr-3"></i>
+                        Sugestões de Solução
+                    </h3>
+                    <div id="suggestions-list" class="space-y-3 max-h-80 overflow-y-auto">
+                        <!-- Suggestions will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Error Message -->
+        <div id="error-message" class="hidden mt-8">
+            <div class="bg-red-900 border border-red-700 rounded-lg p-6">
+                <div class="flex items-center">
+                    <i class="fas fa-exclamation-triangle text-red-400 text-2xl mr-3"></i>
+                    <div>
+                        <h3 class="text-lg font-bold text-red-400">Erro na Análise</h3>
+                        <p id="error-text" class="text-red-300 mt-1"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-dark-card border-t border-dark-border mt-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="text-center text-gray-400">
+                <p>&copy; 2024 Log Analyzer Dashboard. Sistema de análise de logs desenvolvido com Flask e Chart.js</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
